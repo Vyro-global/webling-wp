@@ -177,10 +177,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  // Process asynchronously so we can ack Meta within their timeout.
-  processWebhook(body).catch((error) => {
+  // Process synchronously — serverless platforms (Vercel, Netlify)
+  // may freeze or kill the function as soon as the response is returned,
+  // which would silently drop the message processing.
+  try {
+    await processWebhook(body)
+  } catch (error) {
     console.error('Error processing webhook:', error)
-  })
+  }
 
   return NextResponse.json({ status: 'received' }, { status: 200 })
 }
@@ -640,16 +644,22 @@ async function processMessage(
   // listens to only one trigger runs only when that trigger matches.
   if (contactOutcome.wasCreated) automationTriggers.unshift('new_contact_created')
   if (isFirstInboundMessage) automationTriggers.unshift('first_inbound_message')
+  const automationPromises: Promise<void>[] = []
   for (const triggerType of automationTriggers) {
-    runAutomationsForTrigger({
-      userId,
-      triggerType,
-      contactId: contactRecord.id,
-      context: {
-        message_text: inboundText,
-        conversation_id: conversation.id,
-      },
-    }).catch((err) => console.error('[automations] dispatch failed:', err))
+    automationPromises.push(
+      runAutomationsForTrigger({
+        userId,
+        triggerType,
+        contactId: contactRecord.id,
+        context: {
+          message_text: inboundText,
+          conversation_id: conversation.id,
+        },
+      }).catch((err) => console.error('[automations] dispatch failed:', err))
+    )
+  }
+  if (automationPromises.length > 0) {
+    await Promise.all(automationPromises)
   }
 }
 
