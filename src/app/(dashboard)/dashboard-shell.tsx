@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useFaviconBadge } from "@/hooks/use-favicon-badge";
+import { TotalUnreadProvider } from "@/hooks/use-total-unread";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
@@ -18,6 +20,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   // always visible and this stays at `false` (ignored by the component).
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  // Favicon badge — shows unread message count on the browser tab.
+  useFaviconBadge();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -53,7 +58,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <DashboardShellInner>{children}</DashboardShellInner>
+      <TotalUnreadProvider>
+        <DashboardShellInner>{children}</DashboardShellInner>
+      </TotalUnreadProvider>
     </AuthProvider>
   );
 }

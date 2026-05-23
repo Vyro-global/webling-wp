@@ -52,7 +52,8 @@ export default function SettingsPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => onChange(v as TabValue)}>
-        <TabsList className="bg-slate-900 border border-slate-700">
+        <div className="overflow-x-auto">
+        <TabsList className="bg-slate-900 border border-slate-700 w-full">
           <TabsTrigger
             value="profile"
             className="data-active:bg-slate-800 data-active:text-primary text-slate-400"
@@ -89,6 +90,7 @@ export default function SettingsPage() {
             Appearance
           </TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="profile" className="space-y-6">
           <ProfileForm />

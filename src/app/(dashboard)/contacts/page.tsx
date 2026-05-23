@@ -251,7 +251,7 @@ export default function ContactsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-slate-800 overflow-hidden">
+      <div className="rounded-lg border border-slate-800 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="border-slate-800 hover:bg-transparent">

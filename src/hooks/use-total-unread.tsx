@@ -1,30 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Conversation } from "@/types";
 
 /**
- * Count of conversations with at least one unread inbound message for
- * the current user. Used by the sidebar to surface a green dot on the
- * Inbox nav entry when the user is elsewhere in the app.
- *
- * Lives on its own realtime channel (distinct from the inbox page's
- * "inbox-realtime") so both can coexist without sharing state.
+ * Context holding the total number of conversations with unread messages.
+ * A single provider at the shell level manages the realtime subscription,
+ * and consumers (sidebar, favicon badge) read from context — this avoids
+ * duplicate Supabase channels with the same name.
  */
-export function useTotalUnread(): number {
-  const [total, setTotal] = useState(0);
+const TotalUnreadContext = createContext<number>(0);
 
-  // Keep a live local mirror of {id: unread_count} so INSERT/UPDATE/DELETE
-  // events can adjust the total in O(1) without refetching.
+function useTotalUnreadSubscription(): number {
+  const [total, setTotal] = useState(0);
   const countsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     const supabase = createClient();
     let cancelled = false;
 
-    // Initial load. RLS scopes this to the signed-in user automatically —
-    // no explicit user_id filter needed here.
     (async () => {
       const { data, error } = await supabase
         .from("conversations")
@@ -56,7 +51,6 @@ export function useTotalUnread(): number {
             const row = payload.new as Conversation;
             map.set(row.id, row.unread_count ?? 0);
           }
-          // Recompute — cheap, conversations per user stay small.
           let sum = 0;
           for (const n of map.values()) if (n > 0) sum += 1;
           setTotal(sum);
@@ -71,4 +65,21 @@ export function useTotalUnread(): number {
   }, []);
 
   return total;
+}
+
+export function TotalUnreadProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const total = useTotalUnreadSubscription();
+  return (
+    <TotalUnreadContext.Provider value={total}>
+      {children}
+    </TotalUnreadContext.Provider>
+  );
+}
+
+export function useTotalUnread(): number {
+  return useContext(TotalUnreadContext);
 }
