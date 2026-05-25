@@ -206,7 +206,10 @@ export function MessageThread({
       .reverse()
       .find((m) => m.sender_type === "customer");
 
-    if (!lastCustomerMsg) return { expired: true, remaining: "No customer messages" };
+    // No customer messages yet (e.g. conversation created from inbox).
+    // Don't block text input — let the user try and let Meta decide
+    // whether to accept the message.
+    if (!lastCustomerMsg) return { expired: false, remaining: "" };
 
     const hoursSince = differenceInHours(new Date(), new Date(lastCustomerMsg.created_at));
     const expired = hoursSince >= 24;
