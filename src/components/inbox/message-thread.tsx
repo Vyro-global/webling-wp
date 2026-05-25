@@ -199,7 +199,7 @@ export function MessageThread({
 
   // 24-hour session timer
   const sessionInfo = useMemo(() => {
-    if (!messages.length) return { expired: false, remaining: "" };
+    if (!messages.length) return { expired: true, remaining: "No messages yet" };
 
     // Find last customer message
     const lastCustomerMsg = [...messages]
