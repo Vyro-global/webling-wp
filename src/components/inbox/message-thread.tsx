@@ -207,9 +207,9 @@ export function MessageThread({
       .find((m) => m.sender_type === "customer");
 
     // No customer messages yet (e.g. conversation created from inbox).
-    // Don't block text input — let the user try and let Meta decide
-    // whether to accept the message.
-    if (!lastCustomerMsg) return { expired: false, remaining: "" };
+    // Free-form text is rejected by Meta — the sender must use a
+    // template message to open a 24-hour window first.
+    if (!lastCustomerMsg) return { expired: true, remaining: "No window" };
 
     const hoursSince = differenceInHours(new Date(), new Date(lastCustomerMsg.created_at));
     const expired = hoursSince >= 24;
@@ -938,6 +938,11 @@ export function MessageThread({
       <MessageComposer
         conversationId={conversation.id}
         sessionExpired={sessionInfo.expired}
+        bannerMessage={
+          sessionInfo.remaining === "No window"
+            ? "Send a template message to start the conversation."
+            : "24-hour session expired. Use a template to re-engage."
+        }
         onSend={handleSend}
         onOpenTemplates={handleOpenTemplates}
         replyTo={replyTo}

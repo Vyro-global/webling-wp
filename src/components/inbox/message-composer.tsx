@@ -16,6 +16,9 @@ interface ReplyDraft {
 interface MessageComposerProps {
   conversationId: string;
   sessionExpired: boolean;
+  /** Custom message shown in the yellow banner when sessionExpired is true.
+   *  Defaults to "24-hour session expired. Use a template to re-engage." */
+  bannerMessage?: string;
   onSend: (text: string, replyToId?: string) => void;
   onOpenTemplates: () => void;
   replyTo?: ReplyDraft | null;
@@ -25,6 +28,7 @@ interface MessageComposerProps {
 export function MessageComposer({
   conversationId,
   sessionExpired,
+  bannerMessage,
   onSend,
   onOpenTemplates,
   replyTo,
@@ -90,7 +94,7 @@ export function MessageComposer({
       {sessionExpired && (
         <div className="mb-2 flex items-center justify-between rounded-lg bg-amber-500/10 px-3 py-2">
           <p className="text-xs text-amber-400">
-            24-hour session expired. Use a template to re-engage.
+            {bannerMessage ?? "24-hour session expired. Use a template to re-engage."}
           </p>
           <Button
             variant="ghost"
@@ -122,7 +126,7 @@ export function MessageComposer({
           onKeyDown={handleKeyDown}
           placeholder={
             sessionExpired
-              ? "Session expired - use a template"
+              ? "Use a template to send a message"
               : "Type a message... (Shift+Enter for new line)"
           }
           disabled={sessionExpired}
