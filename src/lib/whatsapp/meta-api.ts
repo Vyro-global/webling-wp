@@ -557,3 +557,96 @@ export async function downloadMedia(
   const buffer = Buffer.from(await response.arrayBuffer())
   return { buffer, contentType }
 }
+
+// ============================================================
+// Template management
+// ============================================================
+
+export interface CreateTemplateOnMetaArgs {
+  wabaId: string
+  accessToken: string
+  name: string
+  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'
+  language: string
+  bodyText: string
+  headerType?: string
+  headerContent?: string
+  footerText?: string
+}
+
+export interface CreateTemplateOnMetaResult {
+  id: string
+  status: string
+}
+
+/**
+ * Submit a new message template to Meta for review and approval.
+ * Meta validates the template structure and places it in PENDING status;
+ * human review follows and can take hours to days.
+ *
+ * Template naming rules (enforced server-side):
+ *  - Lowercase letters, numbers, and underscores only
+ *  - Must be unique per WABA
+ */
+export async function createTemplateOnMeta(
+  args: CreateTemplateOnMetaArgs,
+): Promise<CreateTemplateOnMetaResult> {
+  const {
+    wabaId,
+    accessToken,
+    name,
+    category,
+    language,
+    bodyText,
+    headerType,
+    headerContent,
+    footerText,
+  } = args
+
+  const url = `${META_API_BASE}/${wabaId}/message_templates`
+  const components: Record<string, unknown>[] = []
+
+  if (headerType && headerContent) {
+    components.push({
+      type: 'HEADER',
+      format: headerType,
+      text: headerContent,
+    })
+  }
+
+  components.push({
+    type: 'BODY',
+    text: bodyText,
+  })
+
+  if (footerText) {
+    components.push({
+      type: 'FOOTER',
+      text: footerText,
+    })
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      name,
+      language,
+      category,
+      components,
+    }),
+  })
+
+  if (!response.ok) {
+    await throwMetaError(
+      response,
+      `Meta API error: ${response.status}`,
+    )
+  }
+
+  const data = await response.json()
+  return { id: data.id, status: data.status }
+}

@@ -20,7 +20,10 @@ import {
   ChevronRight,
   LayoutTemplate,
   Loader2,
+  RefreshCw,
+  Settings,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface TemplatePickerProps {
   open: boolean;
@@ -55,6 +58,7 @@ export function TemplatePicker({
 }: TemplatePickerProps) {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selected, setSelected] = useState<MessageTemplate | null>(null);
   const [params, setParams] = useState<string[]>([]);
 
@@ -101,6 +105,45 @@ export function TemplatePicker({
       cancelled = true;
     };
   }, [open]);
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/whatsapp/templates/sync", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || `Sync failed (HTTP ${res.status})`);
+      }
+      toast.success(
+        `Synced ${data.total} template${data.total === 1 ? "" : "s"} from Meta` +
+          (data.inserted || data.updated
+            ? ` (${data.inserted} new, ${data.updated} updated)`
+            : ""),
+      );
+      // Refetch templates after sync
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data: updatedTemplates } = await supabase
+          .from("message_templates")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("status", "Approved")
+          .order("created_at", { ascending: false });
+        if (updatedTemplates) setTemplates(updatedTemplates as MessageTemplate[]);
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Sync failed";
+      toast.error(message);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -155,11 +198,35 @@ export function TemplatePicker({
               </div>
             ) : templates.length === 0 ? (
               <div className="rounded-md border border-slate-800 bg-slate-950/50 p-6 text-center">
-                <p className="text-sm text-slate-300">No approved templates</p>
+                <LayoutTemplate className="mx-auto h-8 w-8 text-slate-600" />
+                <p className="mt-2 text-sm text-slate-300">No approved templates</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Approve a template in Meta WhatsApp Manager, then sync it
-                  from Settings → Templates.
+                  Create a template in Settings → Templates, then sync it
+                  once approved by Meta.
                 </p>
+                <div className="mt-4 flex justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <RefreshCw
+                      className={`mr-1 h-3 w-3 ${syncing ? "animate-spin" : ""}`}
+                    />
+                    {syncing ? "Syncing..." : "Sync from Meta"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open("/settings", "_self")}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Settings className="mr-1 h-3 w-3" />
+                    Settings
+                  </Button>
+                </div>
               </div>
             ) : (
               templates.map((t) => (

@@ -141,6 +141,15 @@ export function TemplateManager() {
       return;
     }
 
+    // Validate template name format (Meta requirement)
+    if (!/^[a-z][a-z0-9_]*$/.test(form.name.trim())) {
+      toast.error(
+        'Template name must start with a letter and contain only ' +
+          'lowercase letters, numbers, and underscores.',
+      );
+      return;
+    }
+
     try {
       setSaving(true);
       if (!user) {
@@ -148,30 +157,37 @@ export function TemplateManager() {
         return;
       }
 
-      const payload = {
-        user_id: user.id,
-        name: form.name.trim(),
-        category: form.category,
-        language: form.language.trim() || 'en_US',
-        body_text: form.body_text.trim(),
-        header_type: form.header_type || null,
-        footer_text: form.footer_text.trim() || null,
-        status: 'Draft' as const,
-      };
+      const res = await fetch('/api/whatsapp/templates/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          category: form.category,
+          language: form.language.trim() || 'en_US',
+          body_text: form.body_text.trim(),
+          header_type: form.header_type || null,
+          footer_text: form.footer_text.trim() || null,
+        }),
+      });
 
-      const { error } = await supabase
-        .from('message_templates')
-        .insert(payload);
+      const data = await res.json();
 
-      if (error) throw error;
+      if (!res.ok) {
+        throw new Error(data?.error || `Failed (HTTP ${res.status})`);
+      }
 
-      toast.success('Template created successfully');
+      toast.success(
+        `Template "${form.name.trim()}" submitted to Meta for review (${data.meta_status}).` +
+          ' It will be available to send once approved.',
+      );
       setDialogOpen(false);
       setForm(emptyForm);
       if (user) await fetchTemplates(user.id);
     } catch (err) {
-      console.error('Save error:', err);
-      toast.error('Failed to create template');
+      console.error('Template creation error:', err);
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to create template',
+      );
     } finally {
       setSaving(false);
     }
@@ -257,9 +273,9 @@ export function TemplateManager() {
         <div>
           <h2 className="text-lg font-semibold text-white">Message Templates</h2>
           <p className="text-sm text-slate-400">
-            Create and manage your WhatsApp message templates. Meta requires
-            every template to be approved in the WhatsApp Manager before it can
-            be sent — use &quot;Sync from Meta&quot; to pull your approved list.
+            Create and manage your WhatsApp message templates. Templates are
+            submitted to Meta for review and approval before they can be sent.
+            Use &quot;Sync from Meta&quot; to pull the latest approval status.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -342,7 +358,8 @@ export function TemplateManager() {
           <DialogHeader>
             <DialogTitle className="text-white">New Message Template</DialogTitle>
             <DialogDescription className="text-slate-400">
-              Create a new WhatsApp message template.
+              Create a new WhatsApp message template. It will be submitted
+              to Meta for review and will be available to send once approved.
             </DialogDescription>
           </DialogHeader>
 
