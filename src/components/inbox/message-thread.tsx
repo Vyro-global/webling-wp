@@ -199,7 +199,7 @@ export function MessageThread({
 
   // 24-hour session timer
   const sessionInfo = useMemo(() => {
-    if (!messages.length) return { expired: true, remaining: "No messages yet" };
+    if (!messages.length) return { expired: false, remaining: "" };
 
     // Find last customer message
     const lastCustomerMsg = [...messages]
@@ -452,8 +452,19 @@ export function MessageThread({
 
         if (!res.ok) {
           const reason = payload?.error || `HTTP ${res.status}`;
-          console.error("Failed to send message:", reason);
-          toast.error(`Failed to send: ${reason}`);
+          console.error("Failed to send message:", reason, payload);
+
+          if (payload?.error_code === "template_required") {
+            toast.error(reason, {
+              action: {
+                label: "Use Template",
+                onClick: () => setTemplateModalOpen(true),
+              },
+            });
+          } else {
+            toast.error(`Failed to send: ${reason}`);
+          }
+
           // Mark the optimistic bubble as failed so the user sees what happened
           onUpdateMessage(tempId, { status: "failed" });
           return;

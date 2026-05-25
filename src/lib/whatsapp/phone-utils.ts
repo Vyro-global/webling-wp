@@ -102,3 +102,19 @@ export function phoneVariants(sanitized: string): string[] {
 export function isRecipientNotAllowedError(message: string): boolean {
   return /131030|not in allowed list|not in the allowed list/i.test(message)
 }
+
+/**
+ * Returns true when Meta rejects a text message because there's no
+ * open 24-hour customer service window. The sender must use a
+ * pre-approved template message instead.
+ *
+ * Meta error codes for this scenario:
+ *  - 131026: Cannot send text outside the 24-hour window
+ *  - 132001: Template name does not exist (needs template to open window)
+ *  - 131005: Message not allowed (generic, often template-related)
+ *
+ * Text-based patterns catch any variation Meta might use.
+ */
+export function isTemplateRequiredError(message: string): boolean {
+  return /131026|132001|131005|outside the \d+-hour|24-hour.*window|template.*required|cannot send.*text.*message|no.*open.*session/i.test(message)
+}

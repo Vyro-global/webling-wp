@@ -8,6 +8,7 @@ import {
   isValidE164,
   phoneVariants,
   isRecipientNotAllowedError,
+  isTemplateRequiredError,
 } from '@/lib/whatsapp/phone-utils'
 import {
   checkRateLimit,
@@ -226,6 +227,19 @@ export async function POST(request: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown Meta API error'
       console.error('Meta API send failed for all variants:', message)
+      // Detect when Meta rejects because there's no open session window
+      // and the sender needs to use a template message instead.
+      if (isTemplateRequiredError(message)) {
+        return NextResponse.json(
+          {
+            error:
+              'This conversation has no open messaging window. ' +
+              'Use a template message to start or re-engage the conversation.',
+            error_code: 'template_required',
+          },
+          { status: 403 }
+        )
+      }
       return NextResponse.json(
         { error: `Meta API error: ${message}` },
         { status: 502 }
