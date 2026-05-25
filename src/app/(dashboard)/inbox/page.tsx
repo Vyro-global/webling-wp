@@ -422,6 +422,16 @@ export default function InboxPage() {
     [activeConversation?.id, router]
   );
 
+  const handleConversationCreated = useCallback(
+    (conv: Conversation) => {
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === conv.id)) return prev;
+        return [conv, ...prev];
+      });
+    },
+    []
+  );
+
   // Mobile "back" — deselect the conversation so the list pane comes
   // back. Also clears the ?c= param so a refresh lands on the list
   // instead of re-opening the thread the user just backed out of.
@@ -524,6 +534,7 @@ export default function InboxPage() {
             conversations={conversations}
             onConversationsLoaded={handleConversationsLoaded}
             resyncToken={resyncToken}
+            onConversationCreated={handleConversationCreated}
           />
         </div>
 
