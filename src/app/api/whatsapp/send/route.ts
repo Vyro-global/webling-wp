@@ -227,9 +227,11 @@ export async function POST(request: Request) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown Meta API error'
       console.error('Meta API send failed for all variants:', message)
-      // Detect when Meta rejects because there's no open session window
-      // and the sender needs to use a template message instead.
-      if (isTemplateRequiredError(message)) {
+      // Only suggest using a template when a TEXT message fails because
+      // there's no open 24-hour window. If a TEMPLATE send itself fails
+      // (error 132001 etc.), surface the real Meta error — the user is
+      // already doing the right thing.
+      if (message_type === 'text' && isTemplateRequiredError(message)) {
         return NextResponse.json(
           {
             error:
