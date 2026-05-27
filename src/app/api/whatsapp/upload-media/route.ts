@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     // The underlying Opus bitstream is identical regardless of container label,
     // so remapping the MIME type before upload is safe — we're just relabelling.
     const uploadMimeType = file.type.startsWith('audio/webm')
-      ? 'audio/ogg;codecs=opus'
+      ? 'audio/ogg'
       : file.type
     const uploadFileName = file.type.startsWith('audio/webm')
       ? file.name.replace(/\.webm$/i, '.ogg')
