@@ -157,9 +157,9 @@ export function ConversationList({
 
   return (
     // w-full on mobile so the list occupies the whole viewport when it's
-    // the single pane showing; fixed 320px on desktop where it shares the
-    // row with the thread + contact sidebar.
-    <div className="flex h-full w-full flex-col border-r border-slate-800 bg-slate-900 lg:w-80">
+    // the single pane showing; fixed 288px on desktop where it shares the
+    // row with the thread.
+    <div className="flex h-full w-full flex-col border-r border-slate-800 bg-slate-900 lg:w-72">
       {/* Search + Filter + New Conversation */}
       <div className="space-y-2 border-b border-slate-800 p-3">
         <div className="flex items-center gap-2">
