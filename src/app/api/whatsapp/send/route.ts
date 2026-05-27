@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendTextMessage, sendTemplateMessage } from '@/lib/whatsapp/meta-api'
+import { sendTextMessage, sendTemplateMessage, sendMediaMessage } from '@/lib/whatsapp/meta-api'
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
 import {
@@ -45,10 +45,15 @@ export async function POST(request: Request) {
       message_type,
       content_text,
       media_url,
+      media_id,
+      media_filename,
       template_name,
       template_params,
+      template_language,
       reply_to_message_id,
     } = body
+
+    const MEDIA_TYPES = ['image', 'video', 'audio', 'document']
 
     if (!conversation_id || !message_type) {
       return NextResponse.json(
@@ -67,6 +72,13 @@ export async function POST(request: Request) {
     if (message_type === 'template' && !template_name) {
       return NextResponse.json(
         { error: 'template_name is required for template messages' },
+        { status: 400 }
+      )
+    }
+
+    if (MEDIA_TYPES.includes(message_type) && !media_id) {
+      return NextResponse.json(
+        { error: 'media_id is required for media messages' },
         { status: 400 }
       )
     }
@@ -185,7 +197,21 @@ export async function POST(request: Request) {
           accessToken,
           to: phone,
           templateName: template_name,
+          language: template_language || undefined,
           params: template_params || [],
+          contextMessageId,
+        })
+        return result.messageId
+      }
+      if (MEDIA_TYPES.includes(message_type)) {
+        const result = await sendMediaMessage({
+          phoneNumberId: config.phone_number_id,
+          accessToken,
+          to: phone,
+          mediaType: message_type,
+          mediaId: media_id,
+          caption: content_text || undefined,
+          fileName: media_filename || undefined,
           contextMessageId,
         })
         return result.messageId
@@ -231,7 +257,7 @@ export async function POST(request: Request) {
       // there's no open 24-hour window. If a TEMPLATE send itself fails
       // (error 132001 etc.), surface the real Meta error — the user is
       // already doing the right thing.
-      if (message_type === 'text' && isTemplateRequiredError(message)) {
+      if (message_type !== 'template' && isTemplateRequiredError(message)) {
         return NextResponse.json(
           {
             error:

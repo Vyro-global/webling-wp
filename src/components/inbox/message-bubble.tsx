@@ -92,7 +92,7 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
 
   if (error) {
     return (
-      <div className="flex h-40 w-60 items-center justify-center rounded-lg bg-slate-700">
+      <div className="flex h-40 w-full max-w-60 items-center justify-center rounded-lg bg-slate-700">
         <ImageOff className="h-8 w-8 text-slate-500" />
       </div>
     );
@@ -100,7 +100,7 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-40 w-60 items-center justify-center rounded-lg bg-slate-700">
+      <div className="flex h-40 w-full max-w-60 items-center justify-center rounded-lg bg-slate-700">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
@@ -110,7 +110,7 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
     <img
       src={src ?? ""}
       alt={alt}
-      className="max-h-64 max-w-60 rounded-lg object-cover"
+      className="max-h-64 max-w-full rounded-lg object-cover"
       onError={() => setError(true)}
     />
   );
@@ -148,7 +148,7 @@ function MessageContent({ message }: { message: Message }) {
             <video
               src={message.media_url}
               controls
-              className="max-h-64 max-w-60 rounded-lg"
+              className="max-h-64 max-w-full rounded-lg"
             />
           ) : (
             <MediaUnavailable label="Video" />
@@ -165,7 +165,7 @@ function MessageContent({ message }: { message: Message }) {
       return (
         <div>
           {message.media_url ? (
-            <audio src={message.media_url} controls className="max-w-60" />
+            <audio src={message.media_url} controls className="max-w-full" />
           ) : (
             <MediaUnavailable label="Audio" />
           )}

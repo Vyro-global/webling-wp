@@ -506,6 +506,77 @@ export function MessageThread({
     setTemplateModalOpen(true);
   }, []);
 
+  const handleSendMedia = useCallback(
+    async (file: File, caption?: string) => {
+      if (!conversation) return;
+
+      const mediaType = file.type.startsWith("image/")
+        ? "image"
+        : file.type.startsWith("video/")
+          ? "video"
+          : file.type.startsWith("audio/")
+            ? "audio"
+            : "document";
+
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: tempId,
+        conversation_id: conversation.id,
+        sender_type: "agent",
+        content_type: mediaType,
+        content_text: caption ?? undefined,
+        status: "sending",
+        created_at: new Date().toISOString(),
+      };
+      onNewMessage(optimisticMsg);
+
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const uploadRes = await fetch("/api/whatsapp/upload-media", {
+          method: "POST",
+          body: form,
+        });
+        const uploadPayload = await uploadRes.json().catch(() => ({}));
+        if (!uploadRes.ok) {
+          throw new Error(uploadPayload?.error ?? `Upload failed: HTTP ${uploadRes.status}`);
+        }
+        const { media_id } = uploadPayload;
+
+        const sendRes = await fetch("/api/whatsapp/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversation_id: conversation.id,
+            message_type: mediaType,
+            media_id,
+            content_text: caption ?? null,
+            media_filename: file.name,
+          }),
+        });
+        const sendPayload = await sendRes.json().catch(() => ({}));
+        if (!sendRes.ok) {
+          const reason = sendPayload?.error ?? `HTTP ${sendRes.status}`;
+          if (sendPayload?.error_code === "template_required") {
+            toast.error(reason, {
+              action: { label: "Use Template", onClick: () => setTemplateModalOpen(true) },
+            });
+          } else {
+            toast.error(`Failed to send: ${reason}`);
+          }
+          onUpdateMessage(tempId, { status: "failed" });
+          return;
+        }
+        onUpdateMessage(tempId, { status: "sent" });
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : "network error";
+        toast.error(`Failed to send media: ${reason}`);
+        onUpdateMessage(tempId, { status: "failed" });
+      }
+    },
+    [conversation, onNewMessage, onUpdateMessage],
+  );
+
   const handleSendTemplate = useCallback(
     async (template: MessageTemplate, params: string[]) => {
       if (!conversation) return;
@@ -533,6 +604,7 @@ export function MessageThread({
             conversation_id: conversation.id,
             message_type: "template",
             template_name: template.name,
+            template_language: template.language,
             template_params: params,
             content_text: renderedBody,
           }),
@@ -862,7 +934,7 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -944,6 +1016,7 @@ export function MessageThread({
             : "24-hour session expired. Use a template to re-engage."
         }
         onSend={handleSend}
+        onSendMedia={handleSendMedia}
         onOpenTemplates={handleOpenTemplates}
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}

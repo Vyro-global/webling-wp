@@ -506,7 +506,92 @@ function validateInteractiveHeaderFooter(
 }
 
 // ============================================================
-// Media
+// Media upload + send
+// ============================================================
+
+export interface UploadMediaArgs {
+  phoneNumberId: string
+  accessToken: string
+  fileBuffer: Buffer
+  mimeType: string
+  fileName: string
+}
+
+export interface UploadMediaResult {
+  mediaId: string
+}
+
+/** Upload a binary file to Meta's media store. Returns a mediaId valid for ~30 days. */
+export async function uploadMedia(args: UploadMediaArgs): Promise<UploadMediaResult> {
+  const { phoneNumberId, accessToken, fileBuffer, mimeType, fileName } = args
+  const url = `${META_API_BASE}/${phoneNumberId}/media`
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', mimeType)
+  const arrayBuf = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength) as ArrayBuffer
+  form.append('file', new Blob([arrayBuf], { type: mimeType }), fileName)
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: form,
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Media upload failed: ${response.status}`)
+  }
+  const data = await response.json()
+  if (!data.id) throw new Error('No media id in Meta upload response')
+  return { mediaId: data.id }
+}
+
+export type MediaMessageType = 'image' | 'video' | 'audio' | 'document'
+
+export interface SendMediaMessageArgs {
+  phoneNumberId: string
+  accessToken: string
+  to: string
+  mediaType: MediaMessageType
+  /** Media id from uploadMedia. */
+  mediaId: string
+  /** Caption — supported for image, video, document (not audio). */
+  caption?: string
+  /** Display filename for document messages. */
+  fileName?: string
+  contextMessageId?: string
+}
+
+/** Send an image, video, audio, or document message using an already-uploaded media id. */
+export async function sendMediaMessage(args: SendMediaMessageArgs): Promise<MetaSendResult> {
+  const { phoneNumberId, accessToken, to, mediaType, mediaId, caption, fileName, contextMessageId } = args
+  const url = `${META_API_BASE}/${phoneNumberId}/messages`
+
+  const mediaPayload: Record<string, unknown> = { id: mediaId }
+  if (caption && mediaType !== 'audio') mediaPayload.caption = caption
+  if (fileName && mediaType === 'document') mediaPayload.filename = fileName
+
+  const body: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: mediaType,
+    [mediaType]: mediaPayload,
+  }
+  if (contextMessageId) body.context = { message_id: contextMessageId }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    await throwMetaError(response, `Meta API error: ${response.status}`)
+  }
+  const data = await response.json()
+  return { messageId: data.messages[0].id }
+}
+
+// ============================================================
+// Media download (proxy)
 // ============================================================
 
 export interface GetMediaUrlArgs {
