@@ -172,8 +172,10 @@ export function MessageComposer({
       };
 
       recorder.onstop = () => {
+        console.log("[onstop] fired, chunks:", audioChunksRef.current.length);
         stream.getTracks().forEach((t) => t.stop());
         if (recordingCancelledRef.current) {
+          console.log("[onstop] recording was cancelled, bailing");
           recordingCancelledRef.current = false;
           audioChunksRef.current = [];
           setIsRecording(false);
@@ -192,8 +194,10 @@ export function MessageComposer({
           const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
           // Send the voice note immediately — no second click needed.
           if (onSendMedia) {
+            console.log("[onstop] sending voice file:", file.name, file.type, file.size);
             onSendMedia(file);
           } else {
+            console.warn("[onstop] onSendMedia is not provided, falling back to pending");
             setPendingFile(file);
             setFilePreview(null);
           }

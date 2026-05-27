@@ -508,7 +508,12 @@ export function MessageThread({
 
   const handleSendMedia = useCallback(
     async (file: File, caption?: string) => {
-      if (!conversation) return;
+      if (!conversation) {
+        console.warn("[handleSendMedia] no conversation, bailing");
+        return;
+      }
+
+      console.log("[handleSendMedia] called with file:", file.name, file.type, file.size);
 
       const mediaType = file.type.startsWith("image/")
         ? "image"
@@ -535,20 +540,25 @@ export function MessageThread({
         created_at: new Date().toISOString(),
       };
       onNewMessage(optimisticMsg);
+      console.log("[handleSendMedia] optimistic message added:", tempId);
 
       try {
         const form = new FormData();
         form.append("file", file);
+        console.log("[handleSendMedia] uploading to Meta...");
         const uploadRes = await fetch("/api/whatsapp/upload-media", {
           method: "POST",
           body: form,
         });
         const uploadPayload = await uploadRes.json().catch(() => ({}));
+        console.log("[handleSendMedia] upload response:", uploadRes.status, uploadPayload);
         if (!uploadRes.ok) {
           throw new Error(uploadPayload?.error ?? `Upload failed: HTTP ${uploadRes.status}`);
         }
         const { media_id } = uploadPayload;
+        console.log("[handleSendMedia] got media_id:", media_id);
 
+        console.log("[handleSendMedia] sending via Meta...");
         const sendRes = await fetch("/api/whatsapp/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -561,6 +571,7 @@ export function MessageThread({
           }),
         });
         const sendPayload = await sendRes.json().catch(() => ({}));
+        console.log("[handleSendMedia] send response:", sendRes.status, sendPayload);
         if (!sendRes.ok) {
           const reason = sendPayload?.error ?? `HTTP ${sendRes.status}`;
           if (sendPayload?.error_code === "template_required") {
