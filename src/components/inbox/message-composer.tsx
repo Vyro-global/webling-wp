@@ -156,13 +156,20 @@ export function MessageComposer({
         if (recordingCancelledRef.current) {
           recordingCancelledRef.current = false;
           audioChunksRef.current = [];
+          setIsRecording(false);
+          setRecordingSeconds(0);
           return;
         }
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
         const ext = mimeType.includes("ogg") ? "ogg" : "webm";
         const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
-        setPendingFile(file);
-        setFilePreview(null);
+        // Send the voice note immediately — no second click needed.
+        if (onSendMedia) {
+          onSendMedia(file);
+        } else {
+          setPendingFile(file);
+          setFilePreview(null);
+        }
         setIsRecording(false);
         setRecordingSeconds(0);
         if (timerRef.current) {
@@ -181,7 +188,7 @@ export function MessageComposer({
     } catch {
       // Mic permission denied or hardware error — nothing to do
     }
-  }, []);
+  }, [onSendMedia]);
 
   const stopRecording = useCallback(() => {
     const recorder = mediaRecorderRef.current;
