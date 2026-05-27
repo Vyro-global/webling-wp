@@ -4,6 +4,14 @@ import { uploadMedia } from '@/lib/whatsapp/meta-api'
 import { decrypt } from '@/lib/whatsapp/encryption'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import type { MediaMessageType } from '@/lib/whatsapp/meta-api'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import { writeFile, readFile, unlink } from 'fs/promises'
+import { tmpdir } from 'os'
+import { randomUUID } from 'crypto'
+import path from 'path'
+
+const execFileAsync = promisify(execFile)
 
 const MAX_BYTES: Record<MediaMessageType, number> = {
   image: 5 * 1024 * 1024,
@@ -17,6 +25,42 @@ function mimeToMediaType(mimeType: string): MediaMessageType {
   if (mimeType.startsWith('video/')) return 'video'
   if (mimeType.startsWith('audio/')) return 'audio'
   return 'document'
+}
+
+/**
+ * Remux audio/webm → audio/ogg (Ogg container, Opus codec) via ffmpeg.
+ * Chrome's MediaRecorder only outputs WebM, but Meta rejects audio/webm.
+ * Remuxing is lossless (no re-encode) and takes ~50ms for a typical voice note.
+ * Returns { buffer, fileName } with the converted Ogg file.
+ */
+async function remuxWebmToOgg(inputBuffer: Buffer, originalName: string): Promise<{
+  buffer: Buffer
+  fileName: string
+}> {
+  const id = randomUUID()
+  const inputPath = path.join(tmpdir(), `${id}.webm`)
+  const outputPath = path.join(tmpdir(), `${id}.ogg`)
+
+  try {
+    await writeFile(inputPath, inputBuffer)
+
+    const ffmpegPath = (await import('@ffmpeg-installer/ffmpeg')).path
+    await execFileAsync(ffmpegPath, [
+      '-i', inputPath,
+      '-c:a', 'copy',   // no re-encode — just remux the container
+      '-map_metadata', '-1',  // strip metadata to keep it small
+      '-y',              // overwrite output
+      outputPath,
+    ])
+
+    const buffer = await readFile(outputPath)
+    const fileName = originalName.replace(/\.webm$/i, '.ogg')
+    return { buffer, fileName }
+  } finally {
+    // Best-effort cleanup — temp dir, don't block the response on it
+    unlink(inputPath).catch(() => {})
+    unlink(outputPath).catch(() => {})
+  }
 }
 
 export async function POST(request: Request) {
@@ -56,18 +100,27 @@ export async function POST(request: Request) {
     }
 
     const accessToken = decrypt(config.access_token)
-    const fileBuffer = Buffer.from(await file.arrayBuffer())
+    let fileBuffer: Buffer = Buffer.from(await file.arrayBuffer())
+    let uploadMimeType = file.type
+    let uploadFileName = file.name
 
-    // Chrome's MediaRecorder only supports audio/webm via MediaRecorder, but
-    // Meta rejects audio/webm (accepted: audio/ogg, aac, mp4, mpeg, amr, opus).
-    // The underlying Opus bitstream is identical regardless of container label,
-    // so remapping the MIME type before upload is safe — we're just relabelling.
-    const uploadMimeType = file.type.startsWith('audio/webm')
-      ? 'audio/ogg'
-      : file.type
-    const uploadFileName = file.type.startsWith('audio/webm')
-      ? file.name.replace(/\.webm$/i, '.ogg')
-      : file.name
+    // Chrome's MediaRecorder only outputs WebM, but Meta rejects audio/webm.
+    // Remux to Ogg (same Opus audio, different container) before uploading.
+    if (file.type.startsWith('audio/webm')) {
+      try {
+        const remuxed = await remuxWebmToOgg(fileBuffer, file.name)
+        fileBuffer = remuxed.buffer
+        uploadMimeType = 'audio/ogg'
+        uploadFileName = remuxed.fileName
+      } catch (err) {
+        console.error('WebM→Ogg remux failed:', err)
+        // Fall back to the original bytes with the MIME label swapped —
+        // Meta may still accept it at upload time (it only checks the
+        // label), but delivery to the recipient is unreliable.
+        uploadMimeType = 'audio/ogg'
+        uploadFileName = file.name.replace(/\.webm$/i, '.ogg')
+      }
+    }
 
     const { mediaId } = await uploadMedia({
       phoneNumberId: config.phone_number_id,
