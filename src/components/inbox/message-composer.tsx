@@ -137,6 +137,25 @@ export function MessageComposer({
 
   const startRecording = useCallback(async () => {
     try {
+      // Check current permission state first so we can give better
+      // guidance if the user previously denied it.
+      let blocked = false;
+      try {
+        const perm =
+          await navigator.permissions.query({ name: "microphone" as PermissionName });
+        blocked = perm.state === "denied";
+        if (blocked) {
+          toast.error(
+            "Microphone is blocked for this site. Click the lock/tune icon in the address bar, find Microphone, and switch it to Allow — then try again.",
+            { duration: 8000 },
+          );
+          return;
+        }
+      } catch {
+        // permissions.query may not be supported (Safari < 16, Firefox < 70).
+        // Fall through to getUserMedia which will trigger the browser prompt.
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
@@ -187,15 +206,17 @@ export function MessageComposer({
         setRecordingSeconds((s) => s + 1);
       }, 1000);
     } catch (err) {
-      const reason =
-        err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Microphone access denied. Please allow mic permissions in your browser settings."
-          : err instanceof DOMException && err.name === "NotFoundError"
-            ? "No microphone found. Please connect a microphone and try again."
-            : err instanceof Error
-              ? err.message
-              : "Could not start recording";
-      toast.error(reason);
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        toast.error(
+          "Microphone access denied. Click the lock/tune icon in the address bar, find Microphone, and switch it to Allow — then try again.",
+          { duration: 8000 },
+        );
+      } else if (err instanceof DOMException && err.name === "NotFoundError") {
+        toast.error("No microphone found. Please connect a microphone and try again.");
+      } else {
+        const message = err instanceof Error ? err.message : "Could not start recording";
+        toast.error(message);
+      }
     }
   }, [onSendMedia]);
 
