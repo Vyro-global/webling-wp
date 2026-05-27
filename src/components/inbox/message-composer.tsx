@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, KeyboardEvent } from "react";
 import { Send, LayoutTemplate, Paperclip, Mic, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ReplyQuote } from "./reply-quote";
@@ -185,8 +186,16 @@ export function MessageComposer({
       timerRef.current = setInterval(() => {
         setRecordingSeconds((s) => s + 1);
       }, 1000);
-    } catch {
-      // Mic permission denied or hardware error — nothing to do
+    } catch (err) {
+      const reason =
+        err instanceof DOMException && err.name === "NotAllowedError"
+          ? "Microphone access denied. Please allow mic permissions in your browser settings."
+          : err instanceof DOMException && err.name === "NotFoundError"
+            ? "No microphone found. Please connect a microphone and try again."
+            : err instanceof Error
+              ? err.message
+              : "Could not start recording";
+      toast.error(reason);
     }
   }, [onSendMedia]);
 
