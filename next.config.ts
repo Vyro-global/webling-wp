@@ -42,6 +42,9 @@ const SECURITY_HEADERS = [
       // https URLs paste-able from the UI), OG images, data URLs for
       // tiny inline assets.
       "img-src 'self' data: blob: https:",
+      // Audio/video blob previews (voice recordings, uploaded media
+      // shown optimistically before uploading to Meta).
+      "media-src 'self' blob:",
       "font-src 'self' data:",
       // Supabase REST + realtime (WSS). All Meta API calls happen
       // server-side, so graph.facebook.com does not belong here.

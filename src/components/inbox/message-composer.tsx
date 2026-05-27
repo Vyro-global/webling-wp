@@ -157,10 +157,14 @@ export function MessageComposer({
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
-          ? "audio/ogg;codecs=opus"
+      // WhatsApp accepts audio/ogg but NOT audio/webm. Prefer ogg when the
+      // browser supports it; when only webm is available (Chrome), remap
+      // the MIME type at upload time — the underlying Opus bitstream is
+      // the same regardless of container label.
+      const mimeType = MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
+        ? "audio/ogg;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
           : "audio/webm";
 
       const recorder = new MediaRecorder(stream, { mimeType });

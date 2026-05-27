@@ -58,12 +58,23 @@ export async function POST(request: Request) {
     const accessToken = decrypt(config.access_token)
     const fileBuffer = Buffer.from(await file.arrayBuffer())
 
+    // Chrome's MediaRecorder only supports audio/webm via MediaRecorder, but
+    // Meta rejects audio/webm (accepted: audio/ogg, aac, mp4, mpeg, amr, opus).
+    // The underlying Opus bitstream is identical regardless of container label,
+    // so remapping the MIME type before upload is safe — we're just relabelling.
+    const uploadMimeType = file.type.startsWith('audio/webm')
+      ? 'audio/ogg;codecs=opus'
+      : file.type
+    const uploadFileName = file.type.startsWith('audio/webm')
+      ? file.name.replace(/\.webm$/i, '.ogg')
+      : file.name
+
     const { mediaId } = await uploadMedia({
       phoneNumberId: config.phone_number_id,
       accessToken,
       fileBuffer,
-      mimeType: file.type,
-      fileName: file.name,
+      mimeType: uploadMimeType,
+      fileName: uploadFileName,
     })
 
     return NextResponse.json({ media_id: mediaId, media_type: mediaType })
