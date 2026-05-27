@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { Message, MessageReaction } from "@/types";
 import {
@@ -53,44 +53,54 @@ function MediaUnavailable({ label }: { label: string }) {
   );
 }
 
-function MediaImage({ url, alt }: { url: string; alt: string }) {
-  const [src, setSrc] = useState<string | null>(null);
+function useMediaProxy(url: string) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadImage = useCallback(async () => {
+  useEffect(() => {
     if (!url) return;
 
-    // Proxy URLs need auth fetch to create blob URL
-    if (url.startsWith("/api/whatsapp/media/")) {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to load media");
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        setSrc(blobUrl);
-      } catch {
-        setError(true);
-      } finally {
+    let cancelled = false;
+    const load = async () => {
+      // Proxy URLs need authenticated fetch; the rest are either blob:
+      // URLs (optimistic) or external URLs that load directly.
+      if (url.startsWith("/api/whatsapp/media/")) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Failed to load media");
+          const blob = await res.blob();
+          if (!cancelled) {
+            setBlobUrl(URL.createObjectURL(blob));
+            setLoading(false);
+          }
+        } catch {
+          if (!cancelled) {
+            setError(true);
+            setLoading(false);
+          }
+        }
+      } else {
+        setBlobUrl(url);
         setLoading(false);
       }
-    } else {
-      setSrc(url);
-      setLoading(false);
-    }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+      if (blobUrl?.startsWith("blob:")) URL.revokeObjectURL(blobUrl);
+    };
   }, [url]);
 
-  useEffect(() => {
-    loadImage();
-    return () => {
-      if (src?.startsWith("blob:")) {
-        URL.revokeObjectURL(src);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadImage]);
+  return { blobUrl, error, loading };
+}
 
-  if (error) {
+function MediaImage({ url, alt }: { url: string; alt: string }) {
+  const { blobUrl, error, loading } = useMediaProxy(url);
+  const [imgError, setImgError] = useState(false);
+
+  if (error || imgError) {
     return (
       <div className="flex h-40 w-full max-w-60 items-center justify-center rounded-lg bg-slate-700">
         <ImageOff className="h-8 w-8 text-slate-500" />
@@ -108,10 +118,52 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
 
   return (
     <img
-      src={src ?? ""}
+      src={blobUrl ?? ""}
       alt={alt}
       className="max-h-64 max-w-full rounded-lg object-cover"
-      onError={() => setError(true)}
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
+function MediaAudio({ url }: { url: string }) {
+  const { blobUrl, error, loading } = useMediaProxy(url);
+
+  if (error) {
+    return <MediaUnavailable label="Audio" />;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-3">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  return <audio src={blobUrl ?? ""} controls className="max-w-full" />;
+}
+
+function MediaVideo({ url }: { url: string }) {
+  const { blobUrl, error, loading } = useMediaProxy(url);
+
+  if (error) {
+    return <MediaUnavailable label="Video" />;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-3">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={blobUrl ?? ""}
+      controls
+      className="max-h-64 max-w-full rounded-lg"
     />
   );
 }
@@ -145,11 +197,7 @@ function MessageContent({ message }: { message: Message }) {
       return (
         <div>
           {message.media_url ? (
-            <video
-              src={message.media_url}
-              controls
-              className="max-h-64 max-w-full rounded-lg"
-            />
+            <MediaVideo url={message.media_url} />
           ) : (
             <MediaUnavailable label="Video" />
           )}
@@ -165,7 +213,7 @@ function MessageContent({ message }: { message: Message }) {
       return (
         <div>
           {message.media_url ? (
-            <audio src={message.media_url} controls className="max-w-full" />
+            <MediaAudio url={message.media_url} />
           ) : (
             <MediaUnavailable label="Audio" />
           )}
