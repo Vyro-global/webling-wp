@@ -287,6 +287,13 @@ export async function POST(request: Request) {
         .eq('id', contact.id)
     }
 
+    // For media messages, construct a proxy URL so the sender's inbox
+    // can display the media without re-uploading. Meta media IDs are
+    // valid ~30 days; the proxy calls getMediaUrl + downloadMedia.
+    const storedMediaUrl = MEDIA_TYPES.includes(message_type) && media_id
+      ? `/api/whatsapp/media/${media_id}`
+      : media_url || null
+
     // Insert message into DB — field names MUST match the messages schema
     // (see supabase/migrations/001_initial_schema.sql):
     //   conversation_id, sender_type, content_type, content_text,
@@ -298,7 +305,7 @@ export async function POST(request: Request) {
         sender_type: 'agent',
         content_type: message_type,
         content_text: content_text || null,
-        media_url: media_url || null,
+        media_url: storedMediaUrl,
         template_name: template_name || null,
         message_id: waMessageId,
         status: 'sent',
@@ -360,6 +367,7 @@ export async function POST(request: Request) {
       success: true,
       message_id: messageRecord.id,
       whatsapp_message_id: waMessageId,
+      media_url: storedMediaUrl,
     })
   } catch (error) {
     console.error('Error in WhatsApp send POST:', error)

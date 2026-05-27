@@ -518,6 +518,11 @@ export function MessageThread({
             ? "audio"
             : "document";
 
+      // Create a local blob URL so the sender sees the media immediately
+      // while the upload is in flight. Revoked after the message is persisted
+      // (the server returns a proxy URL that replaces it).
+      const localUrl = URL.createObjectURL(file);
+
       const tempId = `temp-${Date.now()}`;
       const optimisticMsg: Message = {
         id: tempId,
@@ -525,6 +530,7 @@ export function MessageThread({
         sender_type: "agent",
         content_type: mediaType,
         content_text: caption ?? undefined,
+        media_url: localUrl,
         status: "sending",
         created_at: new Date().toISOString(),
       };
@@ -565,13 +571,24 @@ export function MessageThread({
             toast.error(`Failed to send: ${reason}`);
           }
           onUpdateMessage(tempId, { status: "failed" });
+          URL.revokeObjectURL(localUrl);
           return;
         }
-        onUpdateMessage(tempId, { status: "sent" });
+        // Replace the local blob URL with the persistent proxy URL from the
+        // server so the media remains visible after page reload.
+        onUpdateMessage(tempId, {
+          status: "sent",
+          media_url: sendPayload.media_url ?? localUrl,
+        });
+        // Clean up the local blob if the server gave us a proxy URL.
+        if (sendPayload.media_url) {
+          URL.revokeObjectURL(localUrl);
+        }
       } catch (err) {
         const reason = err instanceof Error ? err.message : "network error";
         toast.error(`Failed to send media: ${reason}`);
         onUpdateMessage(tempId, { status: "failed" });
+        URL.revokeObjectURL(localUrl);
       }
     },
     [conversation, onNewMessage, onUpdateMessage],
