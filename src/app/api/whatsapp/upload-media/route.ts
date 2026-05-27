@@ -28,36 +28,40 @@ function mimeToMediaType(mimeType: string): MediaMessageType {
 }
 
 /**
- * Remux audio/webm → audio/ogg (Ogg container, Opus codec) via ffmpeg.
- * Chrome's MediaRecorder only outputs WebM, but Meta rejects audio/webm.
- * Remuxing is lossless (no re-encode) and takes ~50ms for a typical voice note.
- * Returns { buffer, fileName } with the converted Ogg file.
+ * Convert audio/webm → audio/mp4 (AAC in MP4 container) via ffmpeg.
+ * Chrome's MediaRecorder only outputs WebM (Opus in WebM container),
+ * but Meta rejects audio/webm. AAC in MP4 is universally accepted by
+ * WhatsApp and plays natively on all devices.
+ *
+ * Re-encodes at 64 kbps mono — more than enough for voice, and the
+ * file stays small. Takes ~200ms for a typical voice note.
  */
-async function remuxWebmToOgg(inputBuffer: Buffer, originalName: string): Promise<{
+async function convertWebmToMp4(inputBuffer: Buffer, originalName: string): Promise<{
   buffer: Buffer
   fileName: string
 }> {
   const id = randomUUID()
   const inputPath = path.join(tmpdir(), `${id}.webm`)
-  const outputPath = path.join(tmpdir(), `${id}.ogg`)
+  const outputPath = path.join(tmpdir(), `${id}.mp4`)
 
   try {
     await writeFile(inputPath, inputBuffer)
 
-    const ffmpegPath = (await import('@ffmpeg-installer/ffmpeg')).path
-    await execFileAsync(ffmpegPath, [
+    await execFileAsync('ffmpeg', [
       '-i', inputPath,
-      '-c:a', 'copy',   // no re-encode — just remux the container
-      '-map_metadata', '-1',  // strip metadata to keep it small
-      '-y',              // overwrite output
+      '-c:a', 'aac',         // AAC encoder
+      '-b:a', '64k',         // 64 kbps — fine for voice
+      '-ac', '1',            // mono
+      '-map_metadata', '-1', // strip metadata
+      '-movflags', '+faststart', // streaming-friendly MP4
+      '-y',
       outputPath,
     ])
 
     const buffer = await readFile(outputPath)
-    const fileName = originalName.replace(/\.webm$/i, '.ogg')
+    const fileName = originalName.replace(/\.webm$/i, '.mp4')
     return { buffer, fileName }
   } finally {
-    // Best-effort cleanup — temp dir, don't block the response on it
     unlink(inputPath).catch(() => {})
     unlink(outputPath).catch(() => {})
   }
@@ -105,20 +109,21 @@ export async function POST(request: Request) {
     let uploadFileName = file.name
 
     // Chrome's MediaRecorder only outputs WebM, but Meta rejects audio/webm.
-    // Remux to Ogg (same Opus audio, different container) before uploading.
+    // Re-encode to AAC-in-MP4, the most widely supported audio format on
+    // WhatsApp (plays on all devices, no container-compatibility issues).
     if (file.type.startsWith('audio/webm')) {
       try {
-        const remuxed = await remuxWebmToOgg(fileBuffer, file.name)
-        fileBuffer = remuxed.buffer
-        uploadMimeType = 'audio/ogg'
-        uploadFileName = remuxed.fileName
+        const converted = await convertWebmToMp4(fileBuffer, file.name)
+        fileBuffer = converted.buffer
+        uploadMimeType = 'audio/mp4'
+        uploadFileName = converted.fileName
       } catch (err) {
-        console.error('WebM→Ogg remux failed:', err)
-        // Fall back to the original bytes with the MIME label swapped —
-        // Meta may still accept it at upload time (it only checks the
-        // label), but delivery to the recipient is unreliable.
-        uploadMimeType = 'audio/ogg'
-        uploadFileName = file.name.replace(/\.webm$/i, '.ogg')
+        console.error('WebM→MP4 conversion failed:', err)
+        // Fall back to the original bytes with a MIME label swap.
+        // Meta may accept the upload but delivery to the recipient is
+        // unreliable (WhatsApp may reject the WebM container).
+        uploadMimeType = 'audio/mp4'
+        uploadFileName = file.name.replace(/\.webm$/i, '.mp4')
       }
     }
 
