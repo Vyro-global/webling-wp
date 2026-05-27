@@ -180,15 +180,26 @@ export function MessageComposer({
           setRecordingSeconds(0);
           return;
         }
-        const blob = new Blob(audioChunksRef.current, { type: mimeType });
-        const ext = mimeType.includes("ogg") ? "ogg" : "webm";
-        const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
-        // Send the voice note immediately — no second click needed.
-        if (onSendMedia) {
-          onSendMedia(file);
-        } else {
-          setPendingFile(file);
-          setFilePreview(null);
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          if (blob.size === 0) {
+            toast.error("Recording is empty. Please try again.");
+            setIsRecording(false);
+            setRecordingSeconds(0);
+            return;
+          }
+          const ext = mimeType.includes("ogg") ? "ogg" : "webm";
+          const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
+          // Send the voice note immediately — no second click needed.
+          if (onSendMedia) {
+            onSendMedia(file);
+          } else {
+            setPendingFile(file);
+            setFilePreview(null);
+          }
+        } catch (e) {
+          console.error("onstop handler failed:", e);
+          toast.error("Failed to prepare voice message. Please try again.");
         }
         setIsRecording(false);
         setRecordingSeconds(0);
