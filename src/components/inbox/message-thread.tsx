@@ -818,7 +818,7 @@ export function MessageThread({
     : "Assign";
 
   return (
-    <div className={cn("flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden", DOODLE_BG_CLASSES)}>
+    <div className={cn("flex flex-1 flex-col", DOODLE_BG_CLASSES)}>
       {/* Header — solid bg-slate-900 sits on top of the doodle so the
           name/avatar/dropdowns stay legible. */}
       <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-slate-900 px-3 py-3 sm:px-4">
@@ -962,7 +962,7 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -975,7 +975,7 @@ export function MessageThread({
             </p>
           </div>
         ) : (
-          <div className="w-full space-y-4">
+          <div className="space-y-4">
             {messageGroups.map((group) => (
               <div key={group.date}>
                 {/* Date separator */}

@@ -506,7 +506,7 @@ export default function InboxPage() {
   const hasActiveConv = !!activeConversation;
 
   return (
-    <div className="flex flex-col overflow-hidden" style={{ height: "calc(100vh - 3.5rem)" }}>
+    <div className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6">
       {/* WhatsApp connection banner — in the flex column, not absolute,
           so it pushes the panels down instead of overlapping them. */}
       {whatsappConnected === false && (
@@ -518,7 +518,7 @@ export default function InboxPage() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden min-h-0 h-full">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left panel: Conversation list.
             Hidden on mobile when a conversation is selected so the
             thread can occupy the full width. Always visible on lg+. */}
@@ -544,7 +544,7 @@ export default function InboxPage() {
             (shows its own empty-state if no thread is picked yet). */}
         <div
           className={cn(
-            "flex h-full flex-1 overflow-hidden min-w-0 min-h-0 lg:flex",
+            "flex h-full flex-1 overflow-hidden min-w-0 lg:flex",
             hasActiveConv ? "flex" : "hidden lg:flex",
           )}
         >
