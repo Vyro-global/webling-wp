@@ -304,7 +304,7 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        "flex flex-col",
+        "flex min-w-0 max-w-full flex-col overflow-hidden",
         isAgent ? "items-end" : "items-start",
       )}
     >
