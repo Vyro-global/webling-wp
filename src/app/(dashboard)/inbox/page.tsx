@@ -518,7 +518,7 @@ export default function InboxPage() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-x-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left panel: Conversation list.
             Hidden on mobile when a conversation is selected so the
             thread can occupy the full width. Always visible on lg+. */}
@@ -544,7 +544,7 @@ export default function InboxPage() {
             (shows its own empty-state if no thread is picked yet). */}
         <div
           className={cn(
-            "flex h-full flex-1 overflow-x-hidden min-w-0 lg:flex",
+            "flex h-full flex-1 overflow-hidden min-w-0 lg:flex",
             hasActiveConv ? "flex" : "hidden lg:flex",
           )}
         >

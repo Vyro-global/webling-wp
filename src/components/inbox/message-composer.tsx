@@ -265,7 +265,7 @@ export function MessageComposer({
   const inputDisabled = sessionExpired;
 
   return (
-    <div className="border-t border-slate-800 bg-slate-900 p-3">
+    <div className="shrink-0 border-t border-slate-800 bg-slate-900 p-3">
       {replyTo && (
         <div className="mb-2">
           <ReplyQuote
