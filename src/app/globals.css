@@ -256,6 +256,14 @@ html[data-theme="rose"] {
   --sidebar-ring: oklch(0.645 0.22 16);
 }
 
+/* Force long unbroken strings to break inside message bubbles without
+   affecting the flex intrinsic-size calculations that iOS Safari uses
+   for touch scrolling. Placed outside @layer so Tailwind v4 doesn't
+   strip it. */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -266,9 +274,4 @@ html[data-theme="rose"] {
   html {
     @apply font-sans;
   }
-}
-
-.wrap-anywhere {
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
