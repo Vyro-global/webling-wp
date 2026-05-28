@@ -88,7 +88,7 @@ export function MessageActions({
       <div
         className={cn(
           "group/actions relative min-w-0",
-          isAgent ? "max-w-[65%]" : "max-w-[85%] sm:max-w-[75%]",
+          isAgent ? "max-w-[420px]" : "max-w-[85%] sm:max-w-[75%]",
         )}
       >
         {children}
