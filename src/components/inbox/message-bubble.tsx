@@ -14,6 +14,7 @@ import {
   LayoutTemplate,
   ImageOff,
   CornerDownLeft,
+  Download,
   Expand,
   X,
 } from "lucide-react";
@@ -75,11 +76,21 @@ function MediaLightbox({
       if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", handleKey);
-    const prev = document.body.style.overflow;
+    // Compensate scrollbar width so the page doesn't shift when body
+    // scroll is locked. Without this, removing the scrollbar adds ~15px
+    // to the viewport and the entire page jumps right.
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
     document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
     return () => {
       document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
     };
   }, []);
 
@@ -88,23 +99,36 @@ function MediaLightbox({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
       onClick={onClose}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
-        aria-label="Close"
-      >
-        <X className="h-6 w-6" />
-      </button>
+      {/* Top bar: download (image only) + close */}
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        {type === "image" && (
+          <a
+            href={src}
+            download
+            className="rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+            aria-label="Download"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Download className="h-5 w-5" />
+          </a>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+          aria-label="Close"
+        >
+          <X className="h-6 w-6" />
+        </button>
+      </div>
       {type === "image" ? (
         <img
           src={src}
           alt=""
-          className="max-h-full max-w-full select-none object-contain"
+          className="max-h-full max-w-full object-contain"
           onClick={(e) => e.stopPropagation()}
-          draggable={false}
         />
       ) : (
         <video
