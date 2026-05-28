@@ -566,7 +566,7 @@ export default function InboxPage() {
         {/* Right panel: Contact sidebar — wide desktop only (≥1280px).
             Hidden below xl so the thread has enough breathing room at
             intermediate zoom levels / narrower laptop screens. */}
-        <div className="hidden xl:block">
+        <div className="hidden xl:block w-72 shrink-0 overflow-hidden">
           <ContactSidebar contact={activeContact} />
         </div>
       </div>
