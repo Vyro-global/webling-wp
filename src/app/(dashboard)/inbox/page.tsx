@@ -544,7 +544,7 @@ export default function InboxPage() {
             (shows its own empty-state if no thread is picked yet). */}
         <div
           className={cn(
-            "flex h-full flex-1 overflow-hidden min-w-0 lg:flex",
+            "flex h-full flex-1 overflow-x-hidden min-w-0 lg:flex",
             hasActiveConv ? "flex" : "hidden lg:flex",
           )}
         >
