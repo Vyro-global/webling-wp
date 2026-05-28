@@ -172,7 +172,7 @@ function MessageContent({ message }: { message: Message }) {
   switch (message.content_type) {
     case "text":
       return (
-        <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
+        <p className="whitespace-pre-wrap break-all text-sm">
           {message.content_text}
         </p>
       );
@@ -186,7 +186,7 @@ function MessageContent({ message }: { message: Message }) {
             <MediaUnavailable label="Image" />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
+            <p className="mt-1 whitespace-pre-wrap break-all text-sm">
               {message.content_text}
             </p>
           )}
@@ -202,7 +202,7 @@ function MessageContent({ message }: { message: Message }) {
             <MediaUnavailable label="Video" />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
+            <p className="mt-1 whitespace-pre-wrap break-all text-sm">
               {message.content_text}
             </p>
           )}
@@ -246,7 +246,7 @@ function MessageContent({ message }: { message: Message }) {
             Template
           </span>
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
+            <p className="mt-1 whitespace-pre-wrap break-all text-sm">
               {message.content_text}
             </p>
           )}
@@ -273,7 +273,7 @@ function MessageContent({ message }: { message: Message }) {
             <CornerDownLeft className="h-3 w-3" />
             Button reply
           </span>
-          <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
+          <p className="whitespace-pre-wrap break-all text-sm">
             {message.content_text || "[Interactive reply]"}
           </p>
         </div>
@@ -282,7 +282,7 @@ function MessageContent({ message }: { message: Message }) {
 
     default:
       return (
-        <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
+        <p className="whitespace-pre-wrap break-all text-sm">
           {message.content_text || "[Unsupported message type]"}
         </p>
       );
