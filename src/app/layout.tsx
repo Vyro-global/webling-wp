@@ -71,7 +71,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme={DEFAULT_THEME}
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} h-full max-w-full overflow-x-hidden antialiased`}
     >
       <head>
         <Script
@@ -80,7 +80,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
         />
       </head>
-      <body className="min-h-full bg-background text-foreground font-sans">
+      <body className="min-h-full max-w-full overflow-x-hidden bg-background text-foreground font-sans">
         <ThemeProvider>
           {children}
           <Toaster
