@@ -313,7 +313,7 @@ export function MessageBubble({
           "relative break-words rounded-2xl px-3 py-2",
           isAgent
             ? "max-w-[65%] rounded-br-md bg-primary text-primary-foreground"
-            : "max-w-full rounded-bl-md bg-slate-800 text-slate-100",
+            : "max-w-[75%] rounded-bl-md bg-slate-800 text-slate-100 break-words",
         )}
       >
         {reply && (
