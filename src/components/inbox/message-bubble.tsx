@@ -172,7 +172,7 @@ function MessageContent({ message }: { message: Message }) {
   switch (message.content_type) {
     case "text":
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
+        <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
           {message.content_text}
         </p>
       );
@@ -186,7 +186,7 @@ function MessageContent({ message }: { message: Message }) {
             <MediaUnavailable label="Image" />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
               {message.content_text}
             </p>
           )}
@@ -202,7 +202,7 @@ function MessageContent({ message }: { message: Message }) {
             <MediaUnavailable label="Video" />
           )}
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
               {message.content_text}
             </p>
           )}
@@ -246,7 +246,7 @@ function MessageContent({ message }: { message: Message }) {
             Template
           </span>
           {message.content_text && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+            <p className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
               {message.content_text}
             </p>
           )}
@@ -273,7 +273,7 @@ function MessageContent({ message }: { message: Message }) {
             <CornerDownLeft className="h-3 w-3" />
             Button reply
           </span>
-          <p className="whitespace-pre-wrap break-words text-sm">
+          <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
             {message.content_text || "[Interactive reply]"}
           </p>
         </div>
@@ -282,7 +282,7 @@ function MessageContent({ message }: { message: Message }) {
 
     default:
       return (
-        <p className="whitespace-pre-wrap break-words text-sm">
+        <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-sm">
           {message.content_text || "[Unsupported message type]"}
         </p>
       );
@@ -310,7 +310,7 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative max-w-full break-words rounded-2xl px-3 py-2",
+          "relative max-w-full overflow-hidden break-words rounded-2xl px-3 py-2",
           isAgent
             ? "rounded-br-md bg-primary text-primary-foreground"
             : "rounded-bl-md bg-slate-800 text-slate-100",

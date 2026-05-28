@@ -10,6 +10,7 @@ import { writeFile, readFile, unlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { randomUUID } from 'crypto'
 import path from 'path'
+import { existsSync } from 'fs'
 
 const execFileAsync = promisify(execFile)
 
@@ -27,15 +28,14 @@ function mimeToMediaType(mimeType: string): MediaMessageType {
   return 'document'
 }
 
-/**
- * Convert audio/webm → audio/mp4 (AAC in MP4 container) via ffmpeg.
- * Chrome's MediaRecorder only outputs WebM (Opus in WebM container),
- * but Meta rejects audio/webm. AAC in MP4 is universally accepted by
- * WhatsApp and plays natively on all devices.
- *
- * Re-encodes at 64 kbps mono — more than enough for voice, and the
- * file stays small. Takes ~200ms for a typical voice note.
- */
+function ffmpegPath(): string {
+  // Static binary downloaded during Vercel build (see vercel.json)
+  const bundledPath = path.resolve(process.cwd(), 'ffmpeg')
+  if (existsSync(bundledPath)) return bundledPath
+  // System ffmpeg (macOS Homebrew / Linux)
+  return 'ffmpeg'
+}
+
 async function convertWebmToMp4(inputBuffer: Buffer, originalName: string): Promise<{
   buffer: Buffer
   fileName: string
@@ -46,18 +46,16 @@ async function convertWebmToMp4(inputBuffer: Buffer, originalName: string): Prom
 
   try {
     await writeFile(inputPath, inputBuffer)
-
-    await execFileAsync('ffmpeg', [
+    await execFileAsync(ffmpegPath(), [
       '-i', inputPath,
-      '-c:a', 'aac',         // AAC encoder
-      '-b:a', '64k',         // 64 kbps — fine for voice
-      '-ac', '1',            // mono
-      '-map_metadata', '-1', // strip metadata
-      '-movflags', '+faststart', // streaming-friendly MP4
+      '-c:a', 'aac',
+      '-b:a', '64k',
+      '-ac', '1',
+      '-map_metadata', '-1',
+      '-movflags', '+faststart',
       '-y',
       outputPath,
     ])
-
     const buffer = await readFile(outputPath)
     const fileName = originalName.replace(/\.webm$/i, '.mp4')
     return { buffer, fileName }
@@ -108,9 +106,6 @@ export async function POST(request: Request) {
     let uploadMimeType = file.type
     let uploadFileName = file.name
 
-    // Chrome's MediaRecorder only outputs WebM, but Meta rejects audio/webm.
-    // Re-encode to AAC-in-MP4, the most widely supported audio format on
-    // WhatsApp (plays on all devices, no container-compatibility issues).
     if (file.type.startsWith('audio/webm')) {
       try {
         const converted = await convertWebmToMp4(fileBuffer, file.name)
@@ -119,11 +114,10 @@ export async function POST(request: Request) {
         uploadFileName = converted.fileName
       } catch (err) {
         console.error('WebM→MP4 conversion failed:', err)
-        // Fall back to the original bytes with a MIME label swap.
-        // Meta may accept the upload but delivery to the recipient is
-        // unreliable (WhatsApp may reject the WebM container).
-        uploadMimeType = 'audio/mp4'
-        uploadFileName = file.name.replace(/\.webm$/i, '.mp4')
+        return NextResponse.json(
+          { error: 'Voice encoding failed. Please try again.' },
+          { status: 500 },
+        )
       }
     }
 

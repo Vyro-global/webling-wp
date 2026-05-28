@@ -137,8 +137,6 @@ export function MessageComposer({
 
   const startRecording = useCallback(async () => {
     try {
-      // Check current permission state first so we can give better
-      // guidance if the user previously denied it.
       let blocked = false;
       try {
         const perm =
@@ -152,20 +150,13 @@ export function MessageComposer({
           return;
         }
       } catch {
-        // permissions.query may not be supported (Safari < 16, Firefox < 70).
-        // Fall through to getUserMedia which will trigger the browser prompt.
+        // permissions.query may not be supported everywhere
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // WhatsApp accepts audio/ogg but NOT audio/webm. Prefer ogg when the
-      // browser supports it; when only webm is available (Chrome), remap
-      // the MIME type at upload time — the underlying Opus bitstream is
-      // the same regardless of container label.
-      const mimeType = MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
-        ? "audio/ogg;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : "audio/webm";
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
 
       const recorder = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
@@ -176,10 +167,8 @@ export function MessageComposer({
       };
 
       recorder.onstop = () => {
-        console.log("[onstop] fired, chunks:", audioChunksRef.current.length);
         stream.getTracks().forEach((t) => t.stop());
         if (recordingCancelledRef.current) {
-          console.log("[onstop] recording was cancelled, bailing");
           recordingCancelledRef.current = false;
           audioChunksRef.current = [];
           setIsRecording(false);
@@ -196,17 +185,13 @@ export function MessageComposer({
           }
           const ext = mimeType.includes("ogg") ? "ogg" : "webm";
           const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
-          // Send the voice note immediately — no second click needed.
           if (onSendMedia) {
-            console.log("[onstop] sending voice file:", file.name, file.type, file.size);
             onSendMedia(file);
           } else {
-            console.warn("[onstop] onSendMedia is not provided, falling back to pending");
             setPendingFile(file);
             setFilePreview(null);
           }
         } catch (e) {
-          console.error("onstop handler failed:", e);
           toast.error("Failed to prepare voice message. Please try again.");
         }
         setIsRecording(false);
