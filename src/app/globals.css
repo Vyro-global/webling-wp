@@ -267,3 +267,8 @@ html[data-theme="rose"] {
     @apply font-sans;
   }
 }
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
