@@ -310,10 +310,10 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative max-w-full break-words rounded-2xl px-3 py-2",
+          "relative break-words rounded-2xl px-3 py-2",
           isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-slate-800 text-slate-100",
+            ? "max-w-[65%] rounded-br-md bg-primary text-primary-foreground"
+            : "max-w-full rounded-bl-md bg-slate-800 text-slate-100",
         )}
       >
         {reply && (
