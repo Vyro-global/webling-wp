@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { Message, MessageReaction } from "@/types";
 import {
@@ -13,6 +14,8 @@ import {
   LayoutTemplate,
   ImageOff,
   CornerDownLeft,
+  Expand,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
@@ -50,6 +53,70 @@ function MediaUnavailable({ label }: { label: string }) {
       <ImageOff className="h-4 w-4 shrink-0 text-slate-500" />
       <span>{label} unavailable</span>
     </div>
+  );
+}
+
+function MediaLightbox({
+  src,
+  type,
+  onClose,
+}: {
+  src: string;
+  type: "image" | "video";
+  onClose: () => void;
+}) {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", handleKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      onClick={onClose}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="absolute right-4 top-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+        aria-label="Close"
+      >
+        <X className="h-6 w-6" />
+      </button>
+      {type === "image" ? (
+        <img
+          src={src}
+          alt=""
+          className="max-h-full max-w-full select-none object-contain"
+          onClick={(e) => e.stopPropagation()}
+          draggable={false}
+        />
+      ) : (
+        <video
+          src={src}
+          controls
+          autoPlay
+          className="max-h-full max-w-full"
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
+    </div>,
+    document.body,
   );
 }
 
@@ -99,6 +166,7 @@ function useMediaProxy(url: string) {
 function MediaImage({ url, alt }: { url: string; alt: string }) {
   const { blobUrl, error, loading } = useMediaProxy(url);
   const [imgError, setImgError] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   if (error || imgError) {
     return (
@@ -117,12 +185,22 @@ function MediaImage({ url, alt }: { url: string; alt: string }) {
   }
 
   return (
-    <img
-      src={blobUrl ?? ""}
-      alt={alt}
-      className="max-h-64 max-w-full rounded-lg object-cover"
-      onError={() => setImgError(true)}
-    />
+    <>
+      <img
+        src={blobUrl ?? ""}
+        alt={alt}
+        className="max-h-64 max-w-full cursor-pointer rounded-lg object-cover"
+        onClick={() => setFullscreen(true)}
+        onError={() => setImgError(true)}
+      />
+      {fullscreen && (
+        <MediaLightbox
+          src={blobUrl ?? ""}
+          type="image"
+          onClose={() => setFullscreen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -146,6 +224,7 @@ function MediaAudio({ url }: { url: string }) {
 
 function MediaVideo({ url }: { url: string }) {
   const { blobUrl, error, loading } = useMediaProxy(url);
+  const [fullscreen, setFullscreen] = useState(false);
 
   if (error) {
     return <MediaUnavailable label="Video" />;
@@ -160,11 +239,29 @@ function MediaVideo({ url }: { url: string }) {
   }
 
   return (
-    <video
-      src={blobUrl ?? ""}
-      controls
-      className="max-h-64 max-w-full rounded-lg"
-    />
+    <>
+      <div className="group relative max-w-full">
+        <video
+          src={blobUrl ?? ""}
+          controls
+          className="max-h-64 max-w-full rounded-lg"
+        />
+        <button
+          onClick={() => setFullscreen(true)}
+          className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+          aria-label="View fullscreen"
+        >
+          <Expand className="h-4 w-4" />
+        </button>
+      </div>
+      {fullscreen && (
+        <MediaLightbox
+          src={blobUrl ?? ""}
+          type="video"
+          onClose={() => setFullscreen(false)}
+        />
+      )}
+    </>
   );
 }
 
