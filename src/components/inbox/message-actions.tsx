@@ -79,7 +79,7 @@ export function MessageActions({
   return (
     <div
       className={cn(
-        "flex w-full",
+        "flex w-full max-w-full overflow-hidden",
         isAgent ? "justify-end" : "justify-start",
       )}
       onContextMenu={handleContextMenu}

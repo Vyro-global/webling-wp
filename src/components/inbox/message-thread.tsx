@@ -975,7 +975,7 @@ export function MessageThread({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="max-w-full overflow-x-hidden">
             {messageGroups.map((group) => (
               <div key={group.date}>
                 {/* Date separator */}
